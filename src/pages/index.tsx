@@ -1,8 +1,11 @@
 import { GetStaticProps } from 'next';
-import Head from 'next/head';
 import Link from 'next/link';
 
 import { FiCalendar, FiUser } from 'react-icons/fi';
+import Prismic from '@prismicio/client';
+import { useState } from 'react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { getPrismicClient } from '../services/prismic';
 
 import commonStyles from '../styles/common.module.scss';
@@ -27,51 +30,117 @@ interface HomeProps {
   postsPagination: PostPagination;
 }
 
-export default function Home() {
+export default function Home({ postsPagination }: HomeProps) {
+  const [nextPage, setNextPage] = useState(postsPagination.next_page);
+  const [results, setResults] = useState<Post[]>(
+    postsPagination.results.map(result => {
+      return {
+        ...result,
+        first_publication_date: format(
+          new Date(result.first_publication_date),
+          'dd MMM yyyy',
+          {
+            locale: ptBR,
+          }
+        ),
+      };
+    })
+  );
+
+  function handleNextPage(): void {
+    fetch(nextPage).then(response => {
+      response.json().then(responsePrismic => {
+        setNextPage(responsePrismic.next_page);
+
+        const posts = responsePrismic.results.map(post => {
+          return {
+            uid: post.uid,
+            first_publication_date: format(
+              new Date(post.first_publication_date),
+              'dd MMM yyyy',
+              {
+                locale: ptBR,
+              }
+            ),
+            data: {
+              title: post.data.title,
+              subtitle: post.data.subtitle,
+              author: post.data.author,
+            },
+          };
+        });
+
+        setResults([...results, ...posts]);
+      });
+    });
+  }
+
   return (
-    <>
-      <Head>
-        <title>home ∣ spacetraveling</title>
-      </Head>
-
+    <div className={commonStyles.container}>
       <main className={styles.contentContainer}>
-        <div className={styles.posts}>
-          <Link href="/">
-            <a>
-              <h1>Como utilizar Hooks</h1>
-              <p>Pensando em sincronização em vez de ciclos de vida.</p>
-            </a>
-          </Link>
-          <span>
-            <FiCalendar /> 15 Mar 2021
-          </span>
-          <span>
-            <FiUser /> Joseph Oliveira
-          </span>
-        </div>
+        <section>
+          {results.map(post => {
+            return (
+              <Link href={`/post/${post.uid}`} key={post.uid}>
+                <div className={styles.post}>
+                  <h1>{post.data.title}</h1>
+                  <p>{post.data.subtitle}</p>
+                  <div>
+                    <div>
+                      <FiCalendar />
+                      <span>{post.first_publication_date}</span>
+                    </div>
+                    <div>
+                      <FiUser />
+                      <span>{post.data.author}</span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </section>
 
-        <div className={styles.posts}>
-          <Link href="/">
-            <a>
-              <h1>Como utilizar Hooks</h1>
-              <p>Pensando em sincronização em vez de ciclos de vida.</p>
-            </a>
-          </Link>
-          <span>
-            <FiCalendar /> 15 Mar 2021
-          </span>
-          <span>
-            <FiUser /> Joseph Oliveira
-          </span>
-        </div>
+        {postsPagination.next_page !== null && (
+          <div className={styles.pagination}>
+            <button type="button" onClick={handleNextPage}>
+              Carregar mais posts
+            </button>
+          </div>
+        )}
       </main>
-    </>
+    </div>
   );
 }
 
-// export const getStaticProps = async () => {
-//   // const prismic = getPrismicClient();
-//   // const postsResponse = await prismic.query(TODO);
+export const getStaticProps: GetStaticProps = async () => {
+  const prismic = getPrismicClient();
 
-//   // TODO
-// };
+  const postsResponse = await prismic.query(
+    [Prismic.predicates.at('document.type', 'posts')],
+    {
+      fetch: ['posts.title', 'posts.content', 'posts.author', 'posts.subtitle'],
+    }
+  );
+
+  const posts = postsResponse.results.map(post => {
+    return {
+      uid: post.uid,
+      first_publication_date: post.first_publication_date,
+      data: {
+        title: post.data.title,
+        subtitle: post.data.subtitle,
+        author: post.data.author,
+      },
+    };
+  });
+
+  return {
+    props: {
+      postsPagination: {
+        next_page: postsResponse.next_page,
+        results: posts,
+      },
+    },
+  };
+};
