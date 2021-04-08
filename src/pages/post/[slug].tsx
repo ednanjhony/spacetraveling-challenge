@@ -12,6 +12,7 @@ import { getPrismicClient } from '../../services/prismic';
 
 import commonStyles from '../../styles/common.module.scss';
 import styles from './post.module.scss';
+import Header from '../../components/Header';
 
 interface Post {
   first_publication_date: string | null;
@@ -53,12 +54,13 @@ export default function Post({ post }: PostProps) {
       </Head>
 
       <div className={styles.container}>
+        <Header />
         <img src={post.data.banner.url} alt="banner" />
         <div className={commonStyles.container}>
           <main className={styles.main}>
             <header>
               <h1>{post.data.title}</h1>
-              <div>
+              <div className={styles.info}>
                 <div>
                   <FiCalendar />
                   <time>
@@ -82,7 +84,7 @@ export default function Post({ post }: PostProps) {
               </div>
             </header>
 
-            <div>
+            <div className={styles.content}>
               {post.data.content.map(contentItem => (
                 <article key={contentItem.heading}>
                   <h2>{contentItem.heading}</h2>

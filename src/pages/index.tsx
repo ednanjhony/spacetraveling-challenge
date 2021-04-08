@@ -78,6 +78,7 @@ export default function Home({ postsPagination }: HomeProps) {
   return (
     <div className={commonStyles.container}>
       <main className={styles.contentContainer}>
+        <img src="../images/Logo.svg" alt="logo" />
         <section>
           {results.map(post => {
             return (
@@ -97,7 +98,7 @@ export default function Home({ postsPagination }: HomeProps) {
                   </div>
                 </div>
               </Link>
-            )
+            );
           })}
         </section>
 
